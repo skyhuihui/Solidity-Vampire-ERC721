@@ -44,12 +44,19 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     uint creatcooling; // How long does it take to create one
     uint dayCountMoney; // Price of single breeding
     uint randNonce = 0; // Random number nonce calculation valuep
-    uint singCount = 30000000000000000000; // Number of login gifts
+    uint singMoney; // Number of login gifts
+    uint renameMoney; // Renaming fee
+    uint creatNewVamMoney; // Fee for creating new vampires
+    uint battleMoney;// Combat fees
+    uint battleWinMoney;// Battle winning bonus
+    uint startBidderMoney; // Commissions for auction
+    uint bidderMoney; // Auction fee
     uint biddersTime; // Bidding time
     uint32 createNewTime; // The time of the last vampire feeding.
     uint32 winBattle;// The winning ratio of battle
     uint32 battleColling; // Combat cooling time
     uint32 lastTimeBattle; // Last combat time
+    address contractAddress; // Current contract address collection contract address
     
     ERC20 erc20; // Token contracts
     
@@ -97,7 +104,6 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     onlyOwner
     {
         winBattle = _winBattle;
-      
     }
   
     // Set the combat cooldown time.
@@ -115,6 +121,26 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     {
         biddersTime = 1 seconds * _biddersTime;
     }
+    
+    // Set up Commission
+    function setFee(uint _singMoney, 
+        uint _renameMoney, 
+        uint _creatNewVamMoney,
+        uint _battleMoney,
+        uint _battleWinMoney,
+        uint _startBidderMoney,
+        uint _bidderMoney)
+        public
+        onlyOwner
+    {
+        singMoney = _singMoney.mul(1000000000000000000); // Number of login gifts
+        renameMoney = _renameMoney.mul(1000000000000000000); // Renaming fee
+        creatNewVamMoney = _creatNewVamMoney.mul(1000000000000000000); // Fee for creating new vampires
+        battleMoney = _battleMoney.mul(1000000000000000000);// Combat fees
+        battleWinMoney = _battleWinMoney.mul(1000000000000000000); // Battle winning bonus  
+        startBidderMoney = _startBidderMoney.mul(1000000000000000000); // Commissions for auction
+        bidderMoney = _bidderMoney.mul(1000000000000000000); // Auction fee   
+    }
   
     // Creating new vampires
     function creatVampiers()
@@ -123,22 +149,27 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
         // Each user is generated once.
         require(addrVamCount[msg.sender] == 0);
         uint32 time = uint32(now);
-        uint32 rarity = getRarity();
+        uint32 rarity = _getRarity();
         _creatVampiers(time, rarity, 1, 0);
       
     }
   
     // Vampires eat food ,Creating new vampires
     function creatNewVampiers(uint _vamId) 
-    public 
-    VampireOwner(_vamId)
+        public 
+        VampireOwner(_vamId)
     {
         // Over cooling time
         require(now > createNewTime + creatcooling);
+        
+        // Use erc20 token as a handling fee.
+        require(erc20.balanceOf(msg.sender) >= creatNewVamMoney);
+        erc20.transferFrom(msg.sender, contractAddress, creatNewVamMoney);
+         
         // Reset the time to create new creatures.
         createNewTime = uint32(now);
-        if(getRarity() == 1 && _vamId != 0)
-        uint32 rarity = getRarity();
+        if(_getRarity() == 1 && _vamId != 0)
+        uint32 rarity = _getRarity();
         _creatVampiers(createNewTime, rarity, vampires[_vamId].level, _vamId);
       
     }
@@ -174,7 +205,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     }
   
     // Calculated rarity
-    function getRarity() 
+    function _getRarity() 
     private 
     view 
     returns(uint32)
@@ -221,6 +252,10 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     public 
     VampireOwner(_vamId)
     {
+        // Use erc20 token as a handling fee.
+        require(erc20.balanceOf(msg.sender) >= renameMoney);
+        erc20.transferFrom(msg.sender, contractAddress, renameMoney);
+        
         vampires[_vamId].name = _name;
         emit renameVampierEvent(_vamId, _name);
         
@@ -233,6 +268,10 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     VampireOwner(_vamId)
     {
         require(now > battleColling + lastTimeBattle);
+        // Use erc20 token as a handling fee.
+        require(erc20.balanceOf(msg.sender) >= battleMoney);
+        erc20.transferFrom(msg.sender, contractAddress, battleMoney);
+        
         lastTimeBattle = uint32(now);
         // Generating random numbers
         uint random = _getRandom();
@@ -240,7 +279,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
         if(random > winBattle){
             // Calculating combat effectiveness
             vampires[_vamId].power.add(50);
-            erc20.transfer(msg.sender, 50000000000000000000);
+            erc20.transfer(msg.sender, battleWinMoney);
             if(vampires[_otherVamId].power <= 50)
                 vampires[_otherVamId].power = 0;
             else
@@ -262,7 +301,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     {
         require(addrToSignCount[msg.sender] <= 14);
         addrToSignCount[msg.sender] = addrToSignCount[msg.sender].add(1);
-        erc20.transfer(msg.sender, singCount);
+        erc20.transfer(msg.sender, singMoney);
     }
   
     // Get users of vampires
@@ -289,6 +328,10 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
     public 
     VampireOwner(_vamId)
     {
+        // Use erc20 token as a handling fee.
+        require(erc20.balanceOf(msg.sender) >= startBidderMoney);
+        erc20.transferFrom(msg.sender, contractAddress, startBidderMoney);
+        
         address [] addrs;
         uint [] moneys;
         uint id = bidder.push(VampireStruct.Bidder(addrs, moneys, money, uint32(now), false)).sub(1);
@@ -303,8 +346,15 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
         require(now < biddersTime + bidder[vamToAuction[_vamId]].startTime);
         require(money > bidder[vamToAuction[_vamId]].money);
         require(money > bidder[vamToAuction[_vamId]].moneys[bidder[vamToAuction[_vamId]].moneys.length.sub(1)]);
-        bidder[vamToAuction[_vamId]].addrs.push(msg.sender);
-        bidder[vamToAuction[_vamId]].moneys.push(money);
+        // Use erc20 token as a handling fee.
+        require(erc20.balanceOf(msg.sender) >= money.mul(1000000000000000000).add(bidderMoney));
+        erc20.transferFrom(msg.sender, contractAddress, money.mul(1000000000000000000).add(bidderMoney));
+        // Refund of user auction fee
+        erc20.transfer(bidder[vamToAuction[_vamId]].addrs[0],
+        bidder[vamToAuction[_vamId]].moneys[0].mul(1000000000000000000).add(bidderMoney));
+        
+        bidder[vamToAuction[_vamId]].addrs[0] = msg.sender;
+        bidder[vamToAuction[_vamId]].moneys[0] = money;
         emit auction(msg.sender, money, _vamId);
     }
     
@@ -315,7 +365,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
         for (uint i = 0; i < bidder.length; i++) {
             if (now > biddersTime + bidder[vamToAuction[_vamId]].startTime
             && bidder[vamToAuction[_vamId]].grant == false) {
-                vamToAddr[_vamId] = bidder[vamToAuction[_vamId]].addrs[bidder[vamToAuction[_vamId]].addrs.length.sub(1)];
+                vamToAddr[_vamId] = bidder[vamToAuction[_vamId]].addrs[0];
                 bidder[vamToAuction[_vamId]].grant = true;
           }
         }
