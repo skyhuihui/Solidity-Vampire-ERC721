@@ -8,6 +8,9 @@ contract VampireEvent {
     // renameVampierEvent
     event renameVampierEvent(uint vamId, string name);
     
+    // Battle victory
+    event battleVictory(uint vamId);
+    
     // Maximum amount of auction
     event auction(address addr, uint amount, uint vamId);
 }

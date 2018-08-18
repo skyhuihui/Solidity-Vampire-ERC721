@@ -284,6 +284,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
                 vampires[_otherVamId].power = 0;
             else
                 vampires[_otherVamId].power.sub(50);
+            emit battleVictory(_vamId);
         } else{
             // Calculating combat effectiveness
             vampires[_otherVamId].power.add(50);
@@ -291,6 +292,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
                 vampires[_vamId].power = 0;
             else
                 vampires[_vamId].power.sub(50);
+            emit battleVictory(_otherVamId);
         }
       
     }
@@ -365,6 +367,7 @@ contract Vampire is Ownable, VampireEvent, VampireStruct, ERC721 {
         for (uint i = 0; i < bidder.length; i++) {
             if (now > biddersTime + bidder[vamToAuction[_vamId]].startTime
             && bidder[vamToAuction[_vamId]].grant == false) {
+                erc20.transfer(vamToAddr[_vamId], bidder[vamToAuction[_vamId]].moneys[0]);
                 vamToAddr[_vamId] = bidder[vamToAuction[_vamId]].addrs[0];
                 bidder[vamToAuction[_vamId]].grant = true;
           }
